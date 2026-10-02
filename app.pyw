@@ -1,5 +1,12 @@
 import sys
 import os
+import ctypes
+
+try:
+    myappid = "killsystem.killnet.forensics.1.0"
+    ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
+except Exception:
+    pass
 
 # Asegurar que el directorio raíz de KILLNet esté en sys.path
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
