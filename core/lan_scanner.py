@@ -5,6 +5,8 @@ import socket
 import subprocess
 import ipaddress
 import requests
+import uuid
+import psutil
 from concurrent.futures import ThreadPoolExecutor
 
 IS_WINDOWS = sys.platform.startswith("win")
@@ -88,6 +90,35 @@ def get_local_ip() -> str:
         return ip
     except Exception:
         return "127.0.0.1"
+
+def get_local_mac(local_ip: str) -> str:
+    """
+    Obtiene la dirección MAC real de la interfaz de red activa asociada a la IP local.
+    Utiliza psutil.net_if_addrs() con fallback a uuid.getnode().
+    """
+    try:
+        if local_ip and local_ip != "127.0.0.1":
+            for iface_name, addrs in psutil.net_if_addrs().items():
+                has_ip = any(getattr(a, "address", None) == local_ip for a in addrs)
+                if has_ip:
+                    for a in addrs:
+                        family = getattr(a, "family", None)
+                        if family in (getattr(psutil, "AF_LINK", -1), -1, 17, 18, 23, 24):
+                            addr_str = getattr(a, "address", "")
+                            if addr_str and (":" in addr_str or "-" in addr_str):
+                                return format_mac(addr_str)
+    except Exception:
+        pass
+
+    try:
+        node = uuid.getnode()
+        mac = ":".join(("%012X" % node)[i:i+2] for i in range(0, 12, 2))
+        if mac and mac.lower() != "00:00:00:00:00:00":
+            return format_mac(mac)
+    except Exception:
+        pass
+
+    return "00:00:00:00:00:00"
 
 def get_gateway_ip(local_ip: str) -> str:
     """Intenta determinar la IP de la puerta de enlace (Gateway)."""
@@ -236,6 +267,7 @@ def scan_lan_devices() -> list[dict]:
     y retorna la información estructurada de cada uno.
     """
     local_ip = get_local_ip()
+    local_mac = get_local_mac(local_ip)
     gateway_ip = get_gateway_ip(local_ip)
     subnet_ips = get_subnet_ips(local_ip)
     
@@ -278,10 +310,30 @@ def scan_lan_devices() -> list[dict]:
             
         found_ips.add(ip)
         is_local = (ip == local_ip)
-        is_private_mac = is_random_private_mac(mac)
-        vendor = lookup_mac_vendor(mac, is_private_mac=is_private_mac)
-        hostname = resolve_hostname(ip)
-        device_type = estimate_device_type(ip, mac, vendor, hostname, is_local, gateway_ip)
+        is_gw = (ip == gateway_ip)
+        
+        if is_local:
+            mac = local_mac if local_mac != "00:00:00:00:00:00" else mac
+            is_private_mac = False
+            vendor = lookup_mac_vendor(mac, is_private_mac=False)
+            hostname = resolve_hostname(ip)
+            if not hostname or hostname == "Desconocido":
+                hostname = socket.gethostname()
+            device_type = "PC / Notebook"
+        elif is_gw:
+            is_private_mac = False
+            vendor = lookup_mac_vendor(mac, is_private_mac=False)
+            if any(term in vendor.lower() for term in ["mac privada", "móvil", "movil"]):
+                vendor = "Router / Gateway"
+            hostname = resolve_hostname(ip)
+            if not hostname or hostname == "Desconocido":
+                hostname = "Router Principal"
+            device_type = "Router / Access Point"
+        else:
+            is_private_mac = is_random_private_mac(mac)
+            vendor = lookup_mac_vendor(mac, is_private_mac=is_private_mac)
+            hostname = resolve_hostname(ip)
+            device_type = estimate_device_type(ip, mac, vendor, hostname, is_local, gateway_ip)
         
         devices.append({
             "ip": ip,
@@ -291,17 +343,20 @@ def scan_lan_devices() -> list[dict]:
             "device_type": device_type,
             "is_local": is_local,
             "is_private_mac": is_private_mac,
-            "is_gateway": (ip == gateway_ip)
+            "is_gateway": is_gw
         })
 
-    # Si la IP local no apareció en arp -a, añadirla explícitamente
+    # Si la IP local no apareció en arp -a, añadirla explícitamente con su MAC real
     if local_ip not in found_ips and local_ip != "127.0.0.1":
         hostname = resolve_hostname(local_ip)
+        if not hostname or hostname == "Desconocido":
+            hostname = socket.gethostname()
+        vendor = lookup_mac_vendor(local_mac, is_private_mac=False) if local_mac != "00:00:00:00:00:00" else "Interface Local"
         devices.append({
             "ip": local_ip,
-            "mac": "N/A (Equipo Local)",
+            "mac": local_mac if local_mac != "00:00:00:00:00:00" else "N/A",
             "hostname": hostname,
-            "vendor": "Interface Local",
+            "vendor": vendor,
             "device_type": "PC / Notebook",
             "is_local": True,
             "is_private_mac": False,

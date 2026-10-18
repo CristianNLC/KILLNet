@@ -261,18 +261,24 @@ def detect_evil_twin() -> list[dict]:
 def _check_port(ip: str, port_info: dict) -> dict:
     port = port_info["port"]
     service = port_info["service"]
-    risk = port_info["risk_if_open"]
-    info = port_info["info"]
+    risk = port_info.get("risk_if_open", "MEDIO")
+    info = port_info.get("info", "")
     
     is_open = False
+    s = None
     try:
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        s.settimeout(0.5)
+        s.settimeout(0.35)
         res = s.connect_ex((ip, port))
-        s.close()
         is_open = (res == 0)
-    except Exception:
+    except (socket.timeout, socket.error, Exception):
         is_open = False
+    finally:
+        if s:
+            try:
+                s.close()
+            except Exception:
+                pass
         
     if is_open:
         status_str = "ABIERTO 🚨" if risk in ("CRÍTICO", "ALTO") else "ABIERTO"
@@ -288,7 +294,10 @@ def _check_port(ip: str, port_info: dict) -> dict:
         "status": status_str,
         "is_open": is_open,
         "risk_level": risk,
-        "recommendation": rec
+        "risk_if_open": risk,
+        "info": info,
+        "recommendation": rec,
+        "rec": rec
     }
 
 def audit_gateway_security(gateway_ip: str = None, progress_callback=None) -> list[dict]:
@@ -311,6 +320,18 @@ def audit_gateway_security(gateway_ip: str = None, progress_callback=None) -> li
                 
     # Ordenar resultados por número de puerto
     results.sort(key=lambda x: x["port"])
+    if not results:
+        results.append({
+            "port": 0,
+            "service": "Puerta de Enlace",
+            "status": "SEGURO ✅",
+            "is_open": False,
+            "risk_level": "SEGURO",
+            "risk_if_open": "SEGURO",
+            "info": "Sin puertos expuestos",
+            "recommendation": "No se detectaron puertos críticos expuestos en la puerta de enlace",
+            "rec": "No se detectaron puertos críticos expuestos en la puerta de enlace"
+        })
     return results
 
 def emergency_wifi_disconnect() -> tuple[bool, str]:

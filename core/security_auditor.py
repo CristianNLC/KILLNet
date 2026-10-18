@@ -24,17 +24,19 @@ SERVICE_MAP = {
     8080: "Web Proxy / Alt-HTTP"
 }
 
-def _check_port_banner(target_ip: str, port: int, timeout: float) -> dict:
+def _check_port_banner(target_ip: str, port: int, timeout: float = 0.35) -> dict:
     service_name = SERVICE_MAP.get(port, f"TCP/{port}")
     is_open = False
-    banner = "Sin respuesta de banner"
+    banner = "Cerrado / No responde"
     
+    s = None
     try:
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         s.settimeout(timeout)
         res = s.connect_ex((target_ip, port))
         if res == 0:
             is_open = True
+            banner = "Conectado (Servicio activo)"
             # Intento de banner grabbing no invasivo
             try:
                 if port in (80, 8080):
@@ -44,13 +46,16 @@ def _check_port_banner(target_ip: str, port: int, timeout: float) -> dict:
                     raw_text = data.decode("utf-8", errors="ignore").strip()
                     first_line = raw_text.splitlines()[0] if raw_text else ""
                     banner = first_line[:90] if first_line else "Conectado (Servicio activo)"
-                else:
-                    banner = "Conectado (Sin banner retornado)"
-            except Exception:
+            except (socket.timeout, socket.error, Exception):
                 banner = "Conectado (Puerto ABIERTO)"
-        s.close()
-    except Exception:
+    except (socket.timeout, socket.error, Exception):
         is_open = False
+    finally:
+        if s:
+            try:
+                s.close()
+            except Exception:
+                pass
         
     return {
         "port": port,
@@ -60,10 +65,10 @@ def _check_port_banner(target_ip: str, port: int, timeout: float) -> dict:
         "banner": banner
     }
 
-def scan_device_security(target_ip: str, port_list: list = None, timeout: float = 0.6, progress_callback=None) -> list[dict]:
+def scan_device_security(target_ip: str, port_list: list = None, timeout: float = 0.35, progress_callback=None) -> list[dict]:
     """
     Audita los puertos TCP comunes de un host objetivo para diagnóstico de exposición
-    y captura básica de banners de versión.
+    y captura básica de banners de versión con timeout seguro de 0.35s.
     """
     if not port_list:
         port_list = DEFAULT_AUDIT_PORTS
@@ -79,6 +84,14 @@ def scan_device_security(target_ip: str, port_list: list = None, timeout: float 
                 pass
                 
     results.sort(key=lambda x: x["port"])
+    if not results:
+        results.append({
+            "port": 0,
+            "service": "Auditoría de Servicios",
+            "status": "SEGURO ✅",
+            "is_open": False,
+            "banner": "Sin puertos expuestos detectados en el objetivo"
+        })
     return results
 
 def audit_cleartext_protocols(target_ip: str, open_ports: list[dict]) -> list[dict]:
