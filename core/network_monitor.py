@@ -3,7 +3,7 @@ import socket
 import psutil
 
 from core.risk_engine import compute_connection_risk
-from core.ip_reputation import lookup_threat_summary
+from core.threat_intel import lookup_ip_threat
 
 def is_private_ip(ip_str: str) -> bool:
     """
@@ -89,7 +89,7 @@ def get_active_connections() -> list[dict]:
                 "source": "local",
             }
         else:
-            threat_info = lookup_threat_summary(remote_ip)
+            threat_info = lookup_ip_threat(remote_ip)
             
         risk = compute_connection_risk({
             "pid": pid if pid is not None else 0,

@@ -49,23 +49,34 @@ def compute_connection_risk(connection: dict, threat_info: dict = None) -> dict:
     reasons = []
     abuse_score = int(threat_info.get("abuse_score") or 0)
     is_malicious = bool(threat_info.get("is_malicious") or False)
+    vt_score = int(threat_info.get("vt_score") or 0)
+    otx_pulse = int(threat_info.get("otx_pulse") or 0)
+    malicious_sources = threat_info.get("malicious_sources") or []
     
     remote_ip = connection.get("remote_ip") or ""
     is_private = connection.get("is_private", True)
     status = connection.get("status") or ""
     proc_name = connection.get("process_name") or ""
     
-    # 1. Threat Intelligence: IP reportada como maliciosa
+    # 1. Threat Intelligence unificada: IP maliciosa confirmada por alguna fuente (AbuseIPDB / VirusTotal / OTX)
     if is_malicious:
+        source_str = ", ".join(malicious_sources) if malicious_sources else threat_info.get("source", "desconocido")
         score += 70
-        reasons.append(f"IP maliciosa reportada por Threat Intelligence ({threat_info.get('source', 'desconocido')})")
+        reasons.append(f"IP maliciosa confirmada por Threat Intelligence ({source_str})")
     elif abuse_score:
         contribution = min(40, int(abuse_score * 0.5))
         score += contribution
         if contribution > 0:
             reasons.append(f"Puntaje de abuso elevado en Threat Intelligence ({abuse_score})")
     
-    # 2. Conexión saliente hacia IP pública (tráfico externo)
+    # 2. Señales complementarias de amenaza (detecciones en VirusTotal / OTX)
+    if vt_score or otx_pulse:
+        contribution = min(15, int(max(vt_score, otx_pulse) * 5))
+        score += contribution
+        if contribution > 0:
+            reasons.append(f"Se detectaron coincidencias de amenaza en Threat Intelligence (VirusTotal/OTX)")
+    
+    # 3. Conexión saliente hacia IP pública (tráfico externo)
     if not is_private:
         score += 5
         if status == "LISTEN":
@@ -88,4 +99,6 @@ def compute_connection_risk(connection: dict, threat_info: dict = None) -> dict:
         "risk_reasons": reasons,
         "threat_malicious": is_malicious,
         "abuse_score": abuse_score,
+        "vt_score": vt_score,
+        "otx_pulse": otx_pulse,
     }
