@@ -129,6 +129,7 @@ class DeviceCard(ctk.CTkFrame):
         on_isolate=None,
         on_copy=None,
         on_alias_saved=None,
+        on_card_click=None,
         **kwargs
     ):
         super().__init__(
@@ -146,6 +147,7 @@ class DeviceCard(ctk.CTkFrame):
         self.on_isolate = on_isolate
         self.on_copy = on_copy
         self.on_alias_saved = on_alias_saved
+        self.on_card_click = on_card_click
         
         self.ip = device.get("ip", "")
         self.mac = device.get("mac", "")
@@ -339,6 +341,12 @@ class DeviceCard(ctk.CTkFrame):
             
         self.bind("<Enter>", on_enter)
         self.bind("<Leave>", on_leave)
+        self.bind("<Button-1>", self._on_card_click)
+
+    def _on_card_click(self, event):
+        """Notifica al contenedor que se clickeó la tarjeta para abrir el detalle."""
+        if self.on_card_click:
+            self.on_card_click(self.device, self.is_blocked)
 
     def _prompt_edit_alias(self):
         """Muestra un modal o diálogo para editar el alias amigable del dispositivo."""

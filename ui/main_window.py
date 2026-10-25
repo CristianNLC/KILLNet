@@ -1115,7 +1115,8 @@ class KILLNetMainWindow(ctk.CTk):
                 on_audit=self.on_device_card_audit,
                 on_isolate=self.on_device_card_isolate,
                 on_copy=self.on_device_card_copy,
-                on_alias_saved=self.on_device_card_alias_saved
+                on_alias_saved=self.on_device_card_alias_saved,
+                on_card_click=self.on_device_card_detail
             )
             card.pack(fill="x", expand=True, pady=4, padx=6)
 
@@ -1153,6 +1154,43 @@ class KILLNetMainWindow(ctk.CTk):
 
     def on_device_card_copy(self, text: str, ip: str):
         self.log_message(f"[PORTAPAPELES] Copiada información de {ip}: {text}", "INFO")
+
+    def on_device_card_detail(self, device: dict, is_blocked: bool = False):
+        """Abre el modal con el detalle completo del dispositivo seleccionado."""
+        dialog = ctk.CTkToplevel(self)
+        dialog.title(f"🔍 Detalle del Dispositivo - {device.get('ip') or ''}")
+        dialog.geometry("560x520")
+        dialog.resizable(False, False)
+
+        container = ctk.CTkScrollableFrame(
+            dialog, fg_color=BG_CARD, corner_radius=10, border_width=1, border_color=COLOR_BORDER
+        )
+        container.pack(fill="both", expand=True, padx=14, pady=14)
+
+        alias_or_host = device.get("alias") or (
+            device.get("hostname") if device.get("hostname") not in (None, "Desconocido") else f"Dispositivo ({device.get('ip')})"
+        )
+        status_text = (
+            "💻 Host Local / Tu PC" if device.get("is_local")
+            else ("🚫 Bloqueado" if is_blocked else "🟢 En Línea")
+        )
+
+        info_rows = [
+            ("Dispositivo", alias_or_host),
+            ("IP", device.get("ip") or "-"),
+            ("MAC", device.get("mac") or "-"),
+            ("Host / Hostname", device.get("hostname") or "Desconocido"),
+            ("Fabricante", device.get("vendor") or "Desconocido"),
+            ("Categoría", device.get("device_type") or "Equipo"),
+            ("Estado", status_text),
+            ("Riesgo", f"{device.get('risk_level') or 'LOW'} (score: {device.get('risk_score', '-')})"),
+        ]
+        for i, (k, v) in enumerate(info_rows):
+            ctk.CTkLabel(container, text=f"{k}:", font=FONT_BODY_BOLD, text_color=TEXT_MUTED, anchor="w").pack(fill="x", pady=(8, 0) if i > 0 else (0, 0))
+            ctk.CTkLabel(container, text=str(v), font=FONT_BODY, text_color=TEXT_PRIMARY, anchor="w").pack(fill="x", pady=(0, 8))
+
+        btn_close = ctk.CTkButton(dialog, text="Cerrar", font=("Segoe UI", 10, "bold"), fg_color=COLOR_CARD_INNER, hover_color=BG_CARD_HOVER, text_color=TEXT_PRIMARY, command=dialog.destroy)
+        btn_close.pack(pady=12)
 
     def on_device_card_alias_saved(self, mac: str, alias: str):
         self.log_message(f"[DISPOSITIVOS] Alias actualizado para MAC {mac}: '{alias}'", "SUCCESS")
