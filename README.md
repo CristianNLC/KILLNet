@@ -21,6 +21,16 @@
 ### Instalador Oficial
 Descarga el instalador compilado desde el apartado de **Releases** (KILLNet_Setup.exe) e instálalo con privilegios de administrador.
 
+### 🔒 Privacidad y datos del usuario
+KILLNet no envía telemetría a servidores propios y **el instalador no incluye datos de tu red**. Los archivos generados en ejecución (configuración, inventario de dispositivos, reglas de acceso y alias) se guardan en:
+
+| Ejecución | Ubicación |
+|---|---|
+| Instalador / binario | `%APPDATA%\KILLNet\data\` |
+| Código fuente | `data\` del proyecto |
+
+Los archivos `data/*.json` están **excluidos de Git y del instalador** para no distribuir MACs, IPs ni fabricantes de tu red. Al desinstalar, esos datos permanecen en `%APPDATA%`; puedes borrarlos manualmente cuando quieras.
+
 ### Ejecución desde Código Fuente
 `ash
 git clone [https://github.com/CristianNLC/KILLNet.git](https://github.com/CristianNLC/KILLNet.git)

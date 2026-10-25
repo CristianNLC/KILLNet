@@ -1,10 +1,10 @@
 build/
 dist/
 dist_installer/
-*.spec
 __pycache__/
 *.pyc
 venv/
+.venv/
 .env
 data/config.json
 data/known_devices.json
