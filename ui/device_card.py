@@ -10,10 +10,9 @@ from ui.theme import (
     ACCENT_CYAN, ACCENT_GREEN, ACCENT_RED, ACCENT_GOLD,
     COLOR_BORDER, COLOR_CARD_INNER, FONT_BADGE, FONT_BODY
 )
+from core.paths import data_path
 
-ALIASES_FILE = os.path.join(
-    os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data", "device_aliases.json"
-)
+ALIASES_FILE = data_path("device_aliases.json")
 
 def load_device_aliases() -> dict:
     """Carga los alias personalizados de los dispositivos desde disco."""

@@ -3,9 +3,9 @@ import re
 import json
 import datetime
 
-INVENTORY_FILE = os.path.join(
-    os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data", "known_devices.json"
-)
+from core.paths import data_path
+
+INVENTORY_FILE = data_path("known_devices.json")
 
 def normalize_mac(mac: str) -> str:
     """Normaliza cualquier dirección MAC a formato estándar XX:XX:XX:XX:XX:XX."""

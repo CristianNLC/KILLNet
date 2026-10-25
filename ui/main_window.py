@@ -14,6 +14,7 @@ import customtkinter as ctk
 
 # Módulos Core de KILLNet
 from core.network_monitor import get_active_connections
+from core.paths import data_path
 from core.evidence_exporter import export_audit_to_pdf
 from core.ip_reputation import lookup_ip
 from core.network_blocker import is_admin, kill_process_by_pid, block_remote_ip, toggle_panic_mode
@@ -49,7 +50,7 @@ from ui.theme import (
 )
 from ui.device_card import DeviceCard, load_device_aliases, save_device_alias
 
-CONFIG_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data", "config.json")
+CONFIG_PATH = data_path("config.json")
 
 def load_config():
     if os.path.exists(CONFIG_PATH):

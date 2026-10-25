@@ -3,14 +3,12 @@ import sys
 import json
 import subprocess
 
+from core.paths import data_path
+
 IS_WINDOWS = sys.platform.startswith("win")
 CREATE_NO_WINDOW = 0x08000000 if IS_WINDOWS else 0
 
-RULES_PATH = os.path.join(
-    os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-    "data",
-    "access_rules.json"
-)
+RULES_PATH = data_path("access_rules.json")
 
 def load_access_rules() -> dict:
     """Carga la configuración de control de acceso desde data/access_rules.json."""

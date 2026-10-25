@@ -7,3 +7,6 @@ __pycache__/
 venv/
 .env
 data/config.json
+data/known_devices.json
+data/access_rules.json
+data/device_aliases.json
