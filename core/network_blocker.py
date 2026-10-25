@@ -9,7 +9,7 @@ def is_admin() -> bool:
     except Exception:
         return False
 
-def kill_process_by_pid(pid: int) -> tuple[bool, str]:
+def kill_process_by_pid(pid: int, proc_name: str = None) -> tuple[bool, str]:
     """
     Termina forzosamente un proceso por su PID utilizando psutil.
     """
@@ -18,9 +18,9 @@ def kill_process_by_pid(pid: int) -> tuple[bool, str]:
         
     try:
         proc = psutil.Process(pid)
-        proc_name = proc.name()
+        resolved_name = proc_name or proc.name()
         proc.kill()
-        return True, f"Proceso '{proc_name}' (PID: {pid}) terminado exitosamente."
+        return True, f"Proceso '{resolved_name}' (PID: {pid}) terminado exitosamente."
     except psutil.NoSuchProcess:
         return False, f"El proceso con PID {pid} ya no existe."
     except psutil.AccessDenied:

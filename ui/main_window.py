@@ -64,7 +64,8 @@ def load_config():
         "theme": "Dark",
         "auto_refresh_seconds": 3,
         "geoip_timeout_seconds": 4,
-        "emergency_isolated": False
+        "emergency_isolated": False,
+        "auto_triage": True
     }
 
 def save_config(config_dict):
@@ -118,6 +119,7 @@ class KILLNetMainWindow(ctk.CTk):
         self.is_admin_user = is_admin()
         self.is_auto_monitoring = False
         self.is_emergency_isolated = False
+        self.auto_triage_enabled = bool(self.config.get("auto_triage", True))
         self.executor = ThreadPoolExecutor(max_workers=10)
         
         # Estado Centinela Wi-Fi / IDS
@@ -612,6 +614,12 @@ class KILLNetMainWindow(ctk.CTk):
         # Barra de acciones de sockets
         actions_bar = ctk.CTkFrame(self.container_forensic, fg_color="transparent")
         actions_bar.grid(row=2, column=0, columnspan=2, sticky="ew", padx=10, pady=(0, 8))
+        
+        self.btn_auto_triage = ctk.CTkButton(
+            actions_bar, text="🤖 Autotriage: ON", font=("Segoe UI", 9, "bold"),
+            fg_color=ACCENT_GREEN, hover_color=BG_CARD_HOVER, text_color=ACCENT_GREEN, height=28, command=self._toggle_auto_triage
+        )
+        self.btn_auto_triage.pack(side="left", padx=(0, 8))
         
         self.btn_block_ip = ctk.CTkButton(
             actions_bar, text="🚫 Bloquear IP Seleccionada", font=("Segoe UI", 9, "bold"),
@@ -1405,11 +1413,55 @@ class KILLNetMainWindow(ctk.CTk):
         self._reset_scan_ui_state()
         self._apply_table_filters()
         self.start_geoip_resolutions_async()
+        self._auto_triage_critical_connections()
 
     def _reset_scan_ui_state(self):
         curr_view = self.seg_network_view.get()
         btn_txt = "🔍 Escanear Red Wi-Fi / LAN" if "Fing" in curr_view else "🔍 Escanear Sockets"
         self.btn_network_scan.configure(state="normal", text=btn_txt)
+
+    def _toggle_auto_triage(self):
+        """Activa o desactiva el modo autotriage (respuesta automática ante amenazas CRÍTICAS)."""
+        self.auto_triage_enabled = not self.auto_triage_enabled
+        self.config["auto_triage"] = self.auto_triage_enabled
+        save_config(self.config)
+        self.btn_auto_triage.configure(
+            text=f"🤖 Autotriage: {'ON' if self.auto_triage_enabled else 'OFF'}",
+            fg_color=ACCENT_GREEN if self.auto_triage_enabled else COLOR_CARD_INNER,
+            text_color=ACCENT_GREEN if self.auto_triage_enabled else TEXT_PRIMARY,
+        )
+        self.log_message(f"[TRIAGE] Autotriage {'ACTIVADO' if self.auto_triage_enabled else 'DESACTIVADO'}.", "INFO")
+
+    def _auto_triage_critical_connections(self):
+        """
+        Evalúa las conexiones con riesgo CRÍTICO tras cada escaneo y aplica la
+        respuesta táctica (kill del proceso + bloqueo de IP) con confirmación del usuario.
+        """
+        if not self.auto_triage_enabled:
+            return
+        critical = [
+            c for c in self.current_connections
+            if str(c.get("risk_level") or "LOW").upper() == "CRITICAL"
+        ]
+        for c in critical:
+            pid = c.get("pid") or 0
+            ip = c.get("remote_ip") or ""
+            proc_name = c.get("process_name") or "N/A"
+            if pid in (0, 4) or ip in ("-", "*", "0.0.0.0", "127.0.0.1", "::1"):
+                continue
+            confirmed = messagebox.askyesno(
+                "🚨 Autotriage - Amenaza Crítica",
+                f"Se detectó una conexión con riesgo CRÍTICO:\n• Proceso: {proc_name} (PID: {pid})\n• IP remota: {ip}\n\n¿Forzar la terminación del proceso y bloquear la IP en el Firewall de Windows?"
+            )
+            if not confirmed:
+                self.log_message(f"[TRIAGE] Autotriage omitido por el usuario para PID {pid} ({ip}).", "WARNING")
+                continue
+            kill_ok, kill_msg = kill_process_by_pid(pid, proc_name)
+            self.after(0, self.log_message, kill_msg, "SUCCESS" if kill_ok else "ERROR")
+            block_ok, block_msg = block_remote_ip(ip)
+            self.after(0, self.log_message, block_msg, "SUCCESS" if block_ok else "ERROR")
+            self.log_message(f"[TRIAGE] Respuesta táctica ejecutada: {kill_msg} | {block_msg}", "SUCCESS")
+            self.start_scan_async()
 
     def _set_status_filter(self, status: str):
         self.active_status_filter = status
