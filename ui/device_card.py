@@ -336,7 +336,7 @@ class DeviceCard(ctk.CTkFrame):
         # Vincular el evento de clic en todos los contenedores y elementos de la tarjeta
         clickable_widgets = (
             self, icon_frame, info_frame, top_row, sub_row, actions_frame,
-            self.lbl_title, self.badge_vendor, self.badge_status, self.lbl_subtitle
+            self.lbl_title, badge_vendor, self.badge_status, lbl_subtitle
         )
         for w in clickable_widgets:
             try:
