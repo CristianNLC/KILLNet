@@ -124,6 +124,7 @@ class DeviceCard(ctk.CTkFrame):
         master,
         device: dict,
         is_blocked: bool = False,
+        risk_level: str = "LOW",
         on_audit=None,
         on_isolate=None,
         on_copy=None,
@@ -140,6 +141,7 @@ class DeviceCard(ctk.CTkFrame):
         )
         self.device = device
         self.is_blocked = is_blocked
+        self.risk_level = str(risk_level or "LOW").upper()
         self.on_audit = on_audit
         self.on_isolate = on_isolate
         self.on_copy = on_copy
@@ -250,6 +252,21 @@ class DeviceCard(ctk.CTkFrame):
             corner_radius=6, height=24, padx=10, pady=2
         )
         self.badge_status.pack(side="left", padx=(0, 6))
+        
+        # Badge de Riesgo de red (Threat Intelligence / Risk Engine)
+        risk_badge_cfg = {
+            "CRITICAL": ("🚨 CRÍTICO", ("#fee2e2", "#450a0a"), ACCENT_RED),
+            "HIGH": ("⚠️ RIESGO ALTO", ("#fee2e2", "#450a0a"), ACCENT_RED),
+            "MEDIUM": ("🟡 RIESGO MEDIO", ("#fef3c7", "#78350f"), ACCENT_GOLD),
+            "LOW": ("🛡️ RIESGO BAJO", ("#dcfce7", "#052e16"), ACCENT_GREEN),
+        }
+        risk_text, risk_bg, risk_fg = risk_badge_cfg.get(self.risk_level, risk_badge_cfg["LOW"])
+        self.badge_risk = ctk.CTkLabel(
+            top_row, text=risk_text, font=FONT_BADGE,
+            fg_color=risk_bg, text_color=risk_fg,
+            corner_radius=6, height=24, padx=10, pady=2
+        )
+        self.badge_risk.pack(side="left", padx=(0, 6))
 
         # Badge de Dispositivo Nuevo detectado por el inventario
         if self.is_new:

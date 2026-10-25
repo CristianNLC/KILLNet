@@ -581,7 +581,7 @@ class KILLNetMainWindow(ctk.CTk):
         self.btn_export.pack(side="right")
         
         # Tabla Treeview Forense
-        columns = ("pid", "process", "protocol", "remote_ip", "remote_port", "geo_isp", "status")
+        columns = ("pid", "process", "protocol", "remote_ip", "remote_port", "geo_isp", "status", "risk")
         self.tree = ttk.Treeview(self.container_forensic, columns=columns, show="headings", style="Cyber.Treeview", selectmode="browse")
         
         self.tree.heading("pid", text="PID", anchor="center")
@@ -591,6 +591,7 @@ class KILLNetMainWindow(ctk.CTk):
         self.tree.heading("remote_port", text="Puerto", anchor="center")
         self.tree.heading("geo_isp", text="País / ISP / GeoIP", anchor="w")
         self.tree.heading("status", text="Estado", anchor="center")
+        self.tree.heading("risk", text="Riesgo", anchor="center")
         
         self.tree.column("pid", width=65, minwidth=55, anchor="center")
         self.tree.column("process", width=180, minwidth=120, anchor="w")
@@ -599,6 +600,7 @@ class KILLNetMainWindow(ctk.CTk):
         self.tree.column("remote_port", width=65, minwidth=50, anchor="center")
         self.tree.column("geo_isp", width=260, minwidth=160, anchor="w")
         self.tree.column("status", width=100, minwidth=80, anchor="center")
+        self.tree.column("risk", width=90, minwidth=70, anchor="center")
         
         scrollbar = ttk.Scrollbar(self.container_forensic, orient="vertical", command=self.tree.yview)
         self.tree.configure(yscrollcommand=scrollbar.set)
@@ -1078,10 +1080,23 @@ class KILLNetMainWindow(ctk.CTk):
             is_allowed, _ = is_device_allowed(mac, ip)
             is_blocked = (not is_allowed and not is_local)
             
+            # Determinar el nivel de riesgo del dispositivo (desde telemetría de sockets activa)
+            dev_risk_level = "LOW"
+            if not is_local:
+                for c in self.current_connections:
+                    conn_remote = c.get("remote_ip") or ""
+                    conn_remote = conn_remote if conn_remote not in ("-", "*") else ""
+                    conn_local = c.get("local_ip") or ""
+                    conn_local = conn_local if conn_local not in ("-", "*") else ""
+                    if (ip and conn_remote == ip) or (is_local and conn_local == ip):
+                        dev_risk_level = c.get("risk_level") or "LOW"
+                        break
+            
             card = DeviceCard(
                 self.scroll_devices,
                 device=dev,
                 is_blocked=is_blocked,
+                risk_level=dev_risk_level,
                 on_audit=self.on_device_card_audit,
                 on_isolate=self.on_device_card_isolate,
                 on_copy=self.on_device_card_copy,
@@ -1280,6 +1295,12 @@ class KILLNetMainWindow(ctk.CTk):
         pub_fg = ACCENT_CYAN
         blk_fg = ACCENT_RED
         ok_fg = ACCENT_GREEN
+        risk_fg = {
+            "critical": ACCENT_RED,
+            "high": ACCENT_RED,
+            "medium": ACCENT_GOLD,
+            "low": ACCENT_GREEN,
+        }
         
         for t in (self.tree, self.tree_access, self.tree_restrictions, self.tree_sentinel_ports, self.tree_sentinel_eviltwin, self.tree_auditor):
             try:
@@ -1289,6 +1310,8 @@ class KILLNetMainWindow(ctk.CTk):
                 t.tag_configure("blocked", foreground=blk_fg)
                 t.tag_configure("allowed", foreground=ok_fg)
                 t.tag_configure("accessible", foreground=ok_fg)
+                for lvl, fg in risk_fg.items():
+                    t.tag_configure(f"risk_{lvl}", foreground=fg)
             except Exception:
                 pass
 
@@ -1416,6 +1439,10 @@ class KILLNetMainWindow(ctk.CTk):
             if c.get("is_public"):
                 tags = (tag, "public")
 
+            risk_level = c.get("risk_level") or "LOW"
+            risk_tag = f"risk_{str(risk_level).lower()}"
+            tags = (tag, risk_tag)
+
             self.tree.insert("", "end", values=(
                 c["pid"],
                 c["process_name"],
@@ -1423,7 +1450,8 @@ class KILLNetMainWindow(ctk.CTk):
                 c["remote_ip"],
                 c["remote_port"],
                 c.get("geo_isp", "..."),
-                c["status"]
+                c["status"],
+                risk_level
             ), tags=tags)
 
     def start_geoip_resolutions_async(self):
@@ -1476,7 +1504,19 @@ class KILLNetMainWindow(ctk.CTk):
         if pid in (0, 4):
             messagebox.showerror("Acción Denegada", f"No se puede terminar un proceso crítico del Sistema Operativo (PID {pid}).")
             return
-        if not messagebox.askyesno("Terminar Proceso", f"¿Desea forzar la terminación del proceso '{proc_name}' (PID: {pid})?"):
+        
+        # Determinar el nivel de riesgo asociado al proceso seleccionado desde la telemetría
+        risk_level = "LOW"
+        for c in self.current_connections:
+            if c.get("pid") == pid:
+                risk_level = c.get("risk_level") or "LOW"
+                break
+        
+        risk_note = f"Riesgo detectado: {risk_level}" if risk_level in ("HIGH", "CRITICAL") else f"Riesgo detectado: {risk_level} (bajo / dentro de lo esperado)"
+        if not messagebox.askyesno(
+            "Terminar Proceso",
+            f"¿Desea forzar la terminación del proceso '{proc_name}' (PID: {pid})?\n\n{risk_note}"
+        ):
             return
         threading.Thread(target=self._kill_proc_worker, args=(pid, proc_name), daemon=True).start()
 
@@ -1502,7 +1542,7 @@ class KILLNetMainWindow(ctk.CTk):
                 with open(path, "w", encoding="utf-8") as f:
                     json.dump(self.current_connections, f, indent=2, ensure_ascii=False)
             else:
-                keys = ["pid", "process_name", "protocol", "local_ip", "local_port", "remote_ip", "remote_port", "status", "geo_isp"]
+                keys = ["pid", "process_name", "protocol", "local_ip", "local_port", "remote_ip", "remote_port", "status", "geo_isp", "risk_level", "risk_score"]
                 with open(path, "w", newline="", encoding="utf-8") as f:
                     writer = csv.DictWriter(f, fieldnames=keys, extrasaction="ignore")
                     writer.writeheader()
