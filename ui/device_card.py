@@ -333,8 +333,12 @@ class DeviceCard(ctk.CTkFrame):
         if not self.is_local:
             self.btn_isolate.pack(side="left", padx=4)
 
-        # Vincular el evento de clic en todos los contenedores de la tarjeta
-        for w in (self, icon_frame, info_frame, top_row, sub_row, actions_frame):
+        # Vincular el evento de clic en todos los contenedores y elementos de la tarjeta
+        clickable_widgets = (
+            self, icon_frame, info_frame, top_row, sub_row, actions_frame,
+            lbl_title, badge_vendor, badge_status, lbl_subtitle
+        )
+        for w in clickable_widgets:
             try:
                 w.bind("<Button-1>", self._on_card_click)
             except Exception:

@@ -1161,6 +1161,15 @@ class KILLNetMainWindow(ctk.CTk):
         dialog.title(f"🔍 Detalle del Dispositivo - {device.get('ip') or ''}")
         dialog.geometry("560x520")
         dialog.resizable(False, False)
+        try:
+            dialog.attributes("-topmost", True)
+            dialog.update_idletasks()
+            dialog.lift()
+            self.update_idletasks()
+            self.lift()
+            dialog.after(250, lambda: dialog.attributes("-topmost", False))
+        except Exception:
+            pass
 
         container = ctk.CTkScrollableFrame(
             dialog, fg_color=BG_CARD, corner_radius=10, border_width=1, border_color=COLOR_BORDER
