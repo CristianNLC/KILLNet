@@ -198,6 +198,7 @@ class DeviceCard(ctk.CTkFrame):
         info_frame = ctk.CTkFrame(self, fg_color="transparent")
         info_frame.grid(row=0, column=1, padx=(0, 10), pady=10, sticky="nsew")
         info_frame.grid_columnconfigure(0, weight=1)
+        self.info_frame = info_frame
         
         # Fila 1: Título principal (Alias o Hostname) + Badges
         top_row = ctk.CTkFrame(info_frame, fg_color="transparent")
@@ -332,6 +333,13 @@ class DeviceCard(ctk.CTkFrame):
         if not self.is_local:
             self.btn_isolate.pack(side="left", padx=4)
 
+        # Vincular el evento de clic en todos los contenedores de la tarjeta
+        for w in (self, icon_frame, info_frame, top_row, sub_row, actions_frame):
+            try:
+                w.bind("<Button-1>", self._on_card_click)
+            except Exception:
+                pass
+
     def _bind_hover_effects(self):
         """Añade efecto hover sutil al pasar el cursor sobre la tarjeta."""
         def on_enter(e):
@@ -341,7 +349,6 @@ class DeviceCard(ctk.CTkFrame):
             
         self.bind("<Enter>", on_enter)
         self.bind("<Leave>", on_leave)
-        self.bind("<Button-1>", self._on_card_click)
 
     def _on_card_click(self, event):
         """Notifica al contenedor que se clickeó la tarjeta para abrir el detalle."""
