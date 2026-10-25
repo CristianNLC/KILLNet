@@ -14,6 +14,7 @@ import customtkinter as ctk
 
 # Módulos Core de KILLNet
 from core.network_monitor import get_active_connections
+from core.evidence_exporter import export_audit_to_pdf
 from core.ip_reputation import lookup_ip
 from core.network_blocker import is_admin, kill_process_by_pid, block_remote_ip, toggle_panic_mode
 from core.lan_scanner import scan_lan_devices, get_local_ip
@@ -1532,12 +1533,19 @@ class KILLNetMainWindow(ctk.CTk):
             return
         path = filedialog.asksaveasfilename(
             defaultextension=".csv",
-            filetypes=[("Archivos CSV", "*.csv"), ("Archivos JSON", "*.json")],
+            filetypes=[("Archivos CSV", "*.csv"), ("Archivos JSON", "*.json"), ("Reporte PDF", "*.pdf")],
             initialfile=f"KILLNet_Auditoria_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}"
         )
         if not path:
             return
         try:
+            if path.endswith(".pdf"):
+                pdf_ok, pdf_msg = export_audit_to_pdf(self.current_connections, path)
+                if not pdf_ok:
+                    raise RuntimeError(pdf_msg)
+                self.log_message(f"[EXPORT] Informe PDF forense generado exitosamente: {path} ({pdf_msg})", "SUCCESS")
+                messagebox.showinfo("Exportación Exitosa", f"Informe forense PDF generado:\n{path}")
+                return
             if path.endswith(".json"):
                 with open(path, "w", encoding="utf-8") as f:
                     json.dump(self.current_connections, f, indent=2, ensure_ascii=False)
