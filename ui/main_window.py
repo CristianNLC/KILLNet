@@ -65,7 +65,8 @@ def load_config():
         "auto_refresh_seconds": 3,
         "geoip_timeout_seconds": 4,
         "emergency_isolated": False,
-        "auto_triage": True
+        "auto_triage": True,
+        "auto_start_shield": True
     }
 
 def save_config(config_dict):
@@ -120,6 +121,7 @@ class KILLNetMainWindow(ctk.CTk):
         self.is_auto_monitoring = False
         self.is_emergency_isolated = False
         self.auto_triage_enabled = bool(self.config.get("auto_triage", True))
+        self.auto_start_shield = bool(self.config.get("auto_start_shield", True))
         self.executor = ThreadPoolExecutor(max_workers=10)
         
         # Estado Centinela Wi-Fi / IDS
@@ -146,6 +148,10 @@ class KILLNetMainWindow(ctk.CTk):
         # Construcción de la interfaz
         self._build_layout(saved_theme)
         self._update_all_treeview_tags(effective_mode)
+        
+        # Inicio automático del Escudo Anti-ARP Spoofing al arrancar (si está configurado)
+        if self.auto_start_shield:
+            self._start_arp_guard_on()
         
         # Configuración del tag rojo especial para alertas
         self.txt_console.tag_config("DANGER", foreground=ACCENT_RED)
@@ -1194,7 +1200,7 @@ class KILLNetMainWindow(ctk.CTk):
             self.card_shield_sub.configure(text="Escudo Anti-ARP Spoofing")
         else:
             self.card_shield_val.configure(text="EN ESPERA ⚠️", text_color=ACCENT_GOLD)
-            self.card_shield_sub.configure(text="Protección en espera")
+            self.card_shield_sub.configure(text="Protección en espera - Use el Escudo para activar el blindaje")
 
     # -------------------------------------------------------------
     # NAVEGACIÓN Y CAMBIO DE PESTAÑAS
@@ -1631,25 +1637,49 @@ class KILLNetMainWindow(ctk.CTk):
         self.lbl_sentinel_ssid.configure(text=f"SSID: {info['ssid']}")
         self.lbl_sentinel_bssid.configure(text=f"BSSID: {info['bssid']} | Canal: {info['channel']}")
 
-    def on_toggle_arp_guard(self):
-        if self.switch_arp_guard.get() == 1:
-            self.arp_guard_active = True
-            self.arp_guard_stop_event.clear()
-            self.lbl_sentinel_shield_status.configure(text="ACTIVO (Blindaje)", text_color=ACCENT_GREEN)
-            self.log_message("[IDS CENTINELA] Escudo Anti-ARP Spoofing ACTIVADO.", "SUCCESS")
+    def _start_arp_guard_on(self):
+        """Activa el Escudo Anti-ARP Spoofing y arranca el hilo de monitoreo."""
+        self.arp_guard_active = True
+        if hasattr(self, "switch_arp_guard"):
+            try:
+                self.switch_arp_guard.set(True)
+            except Exception:
+                pass
+        self.arp_guard_stop_event.clear()
+        auto_fix = False
+        if hasattr(self, "chk_auto_fix"):
             auto_fix = bool(self.chk_auto_fix.get() == 1)
-            self.arp_guard_thread = threading.Thread(
-                target=start_arp_guard,
-                args=(self._arp_alert_callback, self.arp_guard_stop_event, auto_fix),
-                daemon=True
-            )
-            self.arp_guard_thread.start()
-        else:
-            self.arp_guard_active = False
-            self.arp_guard_stop_event.set()
-            self.lbl_sentinel_shield_status.configure(text="INACTIVO ⚠️", text_color=ACCENT_GOLD)
-            self.log_message("[IDS CENTINELA] Escudo Anti-ARP Spoofing DETENIDO.", "WARNING")
+        self.arp_guard_thread = threading.Thread(
+            target=start_arp_guard,
+            args=(self._arp_alert_callback, self.arp_guard_stop_event, auto_fix),
+            daemon=True
+        )
+        self.arp_guard_thread.start()
+        if hasattr(self, "lbl_sentinel_shield_status"):
+            self.lbl_sentinel_shield_status.configure(text="ACTIVO (Blindaje)", text_color=ACCENT_GREEN)
+        self.log_message("[IDS CENTINELA] Escudo Anti-ARP Spoofing ACTIVADO.", "SUCCESS")
         self._update_top_metric_cards()
+
+    def _start_arp_guard_off(self):
+        """Detiene el Escudo Anti-ARP Spoofing y restaura el estado inactivo."""
+        self.arp_guard_active = False
+        self.arp_guard_stop_event.set()
+        if hasattr(self, "switch_arp_guard"):
+            try:
+                self.switch_arp_guard.set(False)
+            except Exception:
+                pass
+        if hasattr(self, "lbl_sentinel_shield_status"):
+            self.lbl_sentinel_shield_status.configure(text="INACTIVO ⚠️", text_color=ACCENT_GOLD)
+        self.log_message("[IDS CENTINELA] Escudo Anti-ARP Spoofing DETENIDO.", "WARNING")
+        self._update_top_metric_cards()
+
+    def on_toggle_arp_guard(self, value=None):
+        """Alterna el Escudo Anti-ARP Spoofing (manual o automático al arrancar)."""
+        if self.switch_arp_guard.get() == 1:
+            self._start_arp_guard_on()
+        else:
+            self._start_arp_guard_off()
 
     def _arp_alert_callback(self, alert_data: dict):
         msg = f"[ALERTA IDS] {alert_data.get('type')}: {alert_data.get('message')}"
