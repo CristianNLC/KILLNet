@@ -1,4 +1,4 @@
-# 🌐 KILLNet v1.0 — Network Forensics & Sockets Telemetry Suite
+# 🌐 KILLNet v3.1.0 — Network Forensics & Sockets Telemetry Suite
 
 **KILLNet** es una suite de telemetría de red local y auditoría forense para sistemas operativos Windows, desarrollada con Python y CustomTkinter. Proporciona visibilidad en tiempo real sobre sockets activos, mapeo directo a binarios ejecutables, geolocalización CTI y aislamiento ante incidentes.
 

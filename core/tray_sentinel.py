@@ -16,7 +16,7 @@ except ImportError:
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 ASSETS_DIR = os.path.join(BASE_DIR, "assets")
 
-def _send_toast(title: str, message: str, app_name: str = "KILLNet v3.0"):
+def _send_toast(title: str, message: str, app_name: str = "KILLNet v3.1.0"):
     """Función en segundo plano para emitir notificaciones nativas de Windows de forma segura."""
     def _worker():
         if not notification:
@@ -52,7 +52,7 @@ def notify_mitm_alert(gateway_ip: str, spoofed_mac: str):
 
 def notify_tray_minimized():
     """Notificación discreta al minimizar la aplicación a la bandeja del sistema."""
-    title = "KILLNet v3.0 — Modo Centinela"
+    title = "KILLNet v3.1.0 — Modo Centinela"
     message = "KILLNet continúa vigilando la red en segundo plano desde la bandeja del sistema."
     _send_toast(title, message)
 
@@ -113,7 +113,7 @@ class TraySentinelManager:
                 self._exit_callback()
 
         menu = pystray.Menu(
-            pystray.MenuItem("Abrir KILLNet v3.0", _on_open_clicked, default=True),
+            pystray.MenuItem("Abrir KILLNet v3.1.0", _on_open_clicked, default=True),
             pystray.Menu.SEPARATOR,
             pystray.MenuItem("Cerrar completamente", _on_exit_clicked)
         )
@@ -122,7 +122,7 @@ class TraySentinelManager:
         self.tray_icon = pystray.Icon(
             name="KILLNet",
             icon=image,
-            title="KILLNet v3.0 — Centinela & Auditoría",
+            title="KILLNet v3.1.0 — Centinela & Auditoría",
             menu=menu
         )
 

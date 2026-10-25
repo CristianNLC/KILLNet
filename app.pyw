@@ -3,7 +3,7 @@ import os
 import ctypes
 
 try:
-    myappid = "killsystem.killnet.forensics.1.0"
+    myappid = "killsystem.killnet.forensics.3.1"
     ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
 except Exception:
     pass

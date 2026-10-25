@@ -2,7 +2,7 @@ import tkinter as tk
 from tkinter import ttk
 
 # =====================================================================
-# KILLNet v3.0 - PALETA ADAPTATIVA MODERNA ESTILO FING (LIGHT / DARK)
+# KILLNet v3.1.0 - PALETA ADAPTATIVA MODERNA ESTILO FING (LIGHT / DARK)
 # =====================================================================
 BG_MAIN = ("#f1f5f9", "#0b0f19")
 BG_CARD = ("#ffffff", "#161f30")
@@ -48,7 +48,7 @@ FONT_CONSOLE = ("Consolas", 9)
 def configure_treeview_style(appearance_mode="Dark"):
     """
     Configura los estilos de ttk.Treeview adaptándose armónicamente
-    a la paleta moderna Dark/Light estilo Fing de KILLNet v3.0.
+    a la paleta moderna Dark/Light estilo Fing de KILLNet v3.1.0.
     """
     style = ttk.Style()
     style.theme_use("clam")

@@ -60,7 +60,7 @@ def load_config():
             pass
     return {
         "app_name": "KILLNet",
-        "version": "3.0.0",
+        "version": "3.1.0",
         "theme": "Dark",
         "auto_refresh_seconds": 3,
         "geoip_timeout_seconds": 4,
@@ -90,7 +90,7 @@ class KILLNetMainWindow(ctk.CTk):
         ctk.set_default_color_theme("blue")
         
         # Configuración de ventana elevada en 1100x720 para margen sobre la barra de tareas
-        self.title("KILLNet v3.0 - Suite Forense, Auditoría & Hardening de Red Local")
+        self.title("KILLNet v3.1.0 - Suite Forense, Auditoría & Hardening de Red Local")
         self.minsize(1040, 680)
         self.configure(fg_color=BG_MAIN)
         self._position_window(1100, 720)
@@ -157,7 +157,7 @@ class KILLNetMainWindow(ctk.CTk):
         self.txt_console.tag_config("DANGER", foreground=ACCENT_RED)
         
         # Logs de bienvenida
-        self.log_message(f"=== KILLNet v3.0 Suite Inicializada [{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] ===")
+        self.log_message(f"=== KILLNet v3.1.0 Suite Inicializada [{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] ===")
         self.log_message(f"[CONFIG] Tema cargado: '{saved_theme}' (Efectivo: '{effective_mode}').", "INFO")
         if self.is_admin_user:
             self.log_message("[ENTORNO] Privilegios de Administrador ACTIVOS (IDS, Hardening, Firewall y Kill habilitados).", "SUCCESS")
@@ -247,7 +247,7 @@ class KILLNetMainWindow(ctk.CTk):
         
         # Header Sidebar
         self.lbl_title = ctk.CTkLabel(
-            self.sidebar, text="⚡ KILLNet v3.0", font=("Segoe UI", 22, "bold"), text_color=ACCENT_CYAN
+            self.sidebar, text="⚡ KILLNet v3.1.0", font=("Segoe UI", 22, "bold"), text_color=ACCENT_CYAN
         )
         self.lbl_title.grid(row=0, column=0, padx=20, pady=(16, 0), sticky="w")
         
@@ -2279,7 +2279,7 @@ class KILLNetMainWindow(ctk.CTk):
 
     def open_user_manual(self):
         modal = ctk.CTkToplevel(self)
-        modal.title("Manual de Usuario y Guía Forense - KILLNet v3.0")
+        modal.title("Manual de Usuario y Guía Forense - KILLNet v3.1.0")
         modal.geometry("820x600")
         modal.resizable(False, False)
         modal.transient(self)
