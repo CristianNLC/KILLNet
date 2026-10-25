@@ -2,6 +2,9 @@ import ipaddress
 import socket
 import psutil
 
+from core.risk_engine import compute_connection_risk
+from core.ip_reputation import lookup_threat_summary
+
 def is_private_ip(ip_str: str) -> bool:
     """
     Determina si una dirección IP dada pertenece a rangos privados, de loopback o de enlace local.
@@ -72,7 +75,23 @@ def get_active_connections() -> list[dict]:
 
         is_priv = is_private_ip(remote_ip)
         
-        connections.append({
+        # Evaluar riesgo con Threat Intelligence (AbuseIPDB) y heurísticas de comportamiento
+        if is_priv:
+            threat_info = {
+                "ip": remote_ip,
+                "country": "Local / LAN",
+                "city": "Red Privada",
+                "isp": "N/A",
+                "suspicious": False,
+                "abuse_score": 0,
+                "abuse_category": None,
+                "is_malicious": False,
+                "source": "local",
+            }
+        else:
+            threat_info = lookup_threat_summary(remote_ip)
+            
+        risk = compute_connection_risk({
             "pid": pid if pid is not None else 0,
             "process_name": proc_name,
             "process_path": proc_path,
@@ -85,6 +104,22 @@ def get_active_connections() -> list[dict]:
             "remote_port": str(remote_port),
             "status": status,
             "is_private": is_priv
+        }, threat_info)
+        
+        connections.append({
+            "pid": pid if pid is not None else 0,
+            "process_name": proc_name,
+            "process_path": proc_path,
+            "protocol": proto,
+            "local_address": local_addr_str,
+            "local_ip": local_ip,
+            "local_port": str(local_port),
+            "remote_address": remote_addr_str,
+            "remote_ip": remote_ip,
+            "remote_port": str(remote_port),
+            "status": status,
+            "is_private": is_priv,
+            **risk
         })
         
     return connections
